@@ -241,7 +241,7 @@ def main(from_notebook=False, notebook_opts=[], notebook_args=[]):
         print(f"# rel_distance: {params.relevance_distance}")
         neg_conjs = cnf.getNegatedConjectures()
         start = time.process_time()
-        rel_graph = UniversalSetRelevanceGraph(cnf)
+        rel_graph = AdjacencySetRelevanceGraph(cnf)
         print(f"# relevance_graph_class: {type(rel_graph).__name__}")
         graph_constructed = time.process_time()
         rel_cnf = rel_graph.get_rel_neighbourhood(neg_conjs, params.relevance_distance)

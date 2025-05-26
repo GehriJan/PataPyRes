@@ -64,22 +64,23 @@ class AdjacencySetRelevanceGraph(RelevanceGraph):
 
     def clauses_to_nodes(self, clauses: ClauseSet):
         allNodes = self.get_all_nodes()
-        nodesOfClauseSubset = {
+        return {
             node for node in allNodes if node.clause in clauses.clauses
         }
-        return nodesOfClauseSubset
 
-    def extend_neighbourhood(self, subset: set[Node]):
-        neighbouring_nodes = {
-            neighbour for node in subset for neighbour in node.neighbours
-        }
-        return neighbouring_nodes
+    def extend_neighbourhood(self, outer_nodes: set[Node], inner_nodes: set[Node]):
+        new_nodes = set()
+        for node in outer_nodes:
+            new_nodes |= node.neighbours
+            node.neighbours = set()
+        return new_nodes - outer_nodes - inner_nodes
 
     def get_rel_neighbourhood(self, from_clauses: ClauseSet, distance: int):
 
-        neighbourhood = self.clauses_to_nodes(from_clauses)
+        inner_nodes = self.clauses_to_nodes(from_clauses)
+        outer_nodes = inner_nodes.copy()
         for _ in range(2 * distance - 1):
-            neighbourhood |= self.extend_neighbourhood(neighbourhood)
+            outer_nodes = self.extend_neighbourhood(outer_nodes, inner_nodes)
+            inner_nodes |= outer_nodes
 
-        clauses = self.nodes_to_clauses(neighbourhood)
-        return clauses
+        return self.nodes_to_clauses(inner_nodes | outer_nodes)
