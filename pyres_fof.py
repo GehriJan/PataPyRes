@@ -242,6 +242,7 @@ def main(from_notebook=False, notebook_opts=[], notebook_args=[]):
         neg_conjs = cnf.getNegatedConjectures()
         start = time.process_time()
         rel_graph = AdjacencySetRelevanceGraph(cnf)
+        print(f"# relevance_graph_class: {type(rel_graph).__name__}")
         graph_constructed = time.process_time()
         rel_cnf = rel_graph.get_rel_neighbourhood(neg_conjs, params.relevance_distance)
         neighbourhood_computed = time.process_time()
