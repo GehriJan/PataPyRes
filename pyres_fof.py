@@ -111,6 +111,7 @@ from saturation import SearchParams, ProofState
 from litselection import LiteralSelectors
 from alternatingpath_universal_set import UniversalSetRelevanceGraph
 from alternatingpath_adjacency_set import AdjacencySetRelevanceGraph
+from alternatingpath_matrix import MatrixRelevanceGraph
 
 suppressEqAxioms = False
 silent = False
@@ -241,7 +242,7 @@ def main(from_notebook=False, notebook_opts=[], notebook_args=[]):
         print(f"# rel_distance: {params.relevance_distance}")
         neg_conjs = cnf.getNegatedConjectures()
         start = time.process_time()
-        rel_graph = AdjacencySetRelevanceGraph(cnf)
+        rel_graph = MatrixRelevanceGraph(cnf)
         print(f"# relevance_graph_class: {type(rel_graph).__name__}")
         graph_constructed = time.process_time()
         rel_cnf = rel_graph.get_rel_neighbourhood(neg_conjs, params.relevance_distance)
