@@ -79,7 +79,7 @@ class Substitution(object):
         Return a print representation of the substitution.
         """
         return "{"+\
-               ",".join([i+"<-"+terms.term2String(self.subst[i])
+               ",".join([str(i)+"<-"+str(terms.term2String(self.subst[i]))
                          for i in self.subst])\
                          +"}"
 
