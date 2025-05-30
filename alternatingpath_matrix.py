@@ -4,8 +4,11 @@ from fofspec import FOFSpec
 from literals import Literal
 from clauses import Clause
 from unification import mgu
-import pandas as pd
+from literals import literalList2String
 import numpy as np
+import networkx as nx
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 from scipy.sparse.csgraph import dijkstra
 
 
@@ -68,3 +71,122 @@ class MatrixRelevanceGraph(RelevanceGraph):
         nodes_neighbourhood = np.argwhere(np.isfinite(distance_to_set)).flatten()
         clauses_neighbourhood = self.nodes_to_clauses(nodes_neighbourhood)
         return clauses_neighbourhood
+
+    ####################################
+    # PLOTTING FUNCTIONS
+    ####################################
+
+    def to_mermaid(self, path: str) -> str:
+        G = self.create_nx_graph()
+        edge_x, edge_y = self.get_edge_coordinates(G)
+        edge_trace = self.create_edge_trace(edge_x, edge_y)
+        node_x, node_y = self.get_node_coordinates(G)
+        node_trace = self.create_node_trace(node_x, node_y)
+        self.node_to_rel_distance()
+        fig = self.create_figure(edge_trace, node_trace)
+        fig.show(renderer="browser")
+
+    def create_nx_graph(self):
+        G = nx.Graph()
+        # Get edges
+        rows, cols = np.where(self.adjacency_matrix == True)
+        edges = zip(rows.tolist(), cols.tolist())
+        # Add edges
+        G.add_edges_from(edges)
+        # Add position attribute
+        pos = nx.spring_layout(G)
+        nx.set_node_attributes(G, pos, "pos")
+
+        return G
+
+    def get_node_labels(self):
+        return [
+            f"clause: {literalList2String(clause.literals)}\n"
+            + f"literal: {literal}\n"
+            + f"direction: {"out" if index%2==0 else "in"}"
+            for index, (clause, literal) in enumerate(self.nodes[:, 0:2])
+        ]
+
+    def get_edge_coordinates(self, G):
+        edge_x = []
+        edge_y = []
+        for start, end in G.edges():
+            x0, y0 = G.nodes[start]["pos"]
+            x1, y1 = G.nodes[end]["pos"]
+            edge_x.extend([x0, x1, None])
+            edge_y.extend([y0, y1, None])
+
+        return edge_x, edge_y
+
+    def create_edge_trace(self, edge_x, edge_y):
+        return go.Scatter(
+            x=edge_x,
+            y=edge_y,
+            line=dict(width=0.5, color="#888"),
+            hoverinfo="none",
+            mode="lines",
+        )
+
+    def get_node_coordinates(self, G):
+        node_x = []
+        node_y = []
+        for node in G.nodes():
+            x, y = G.nodes[node]["pos"]
+            node_x.append(x)
+            node_y.append(y)
+        return node_x, node_y
+
+    def create_node_trace(self, node_x, node_y):
+        return go.Scatter(
+            x=node_x,
+            y=node_y,
+            mode="markers",
+            hoverinfo="text",
+            text=self.get_node_labels(),
+            marker=dict(
+                showscale=True,
+                colorscale="YlGnBu",
+                reversescale=True,
+                color=self.node_to_rel_distance(),
+                size=10,
+                colorbar=dict(
+                    thickness=15,
+                    title=dict(text="Node distance", side="right"),
+                    xanchor="left",
+                ),
+                line_width=2,
+            ),
+        )
+
+    def create_figure(self, edge_trace, node_trace):
+        return go.Figure(
+            data=[edge_trace, node_trace],
+            layout=go.Layout(
+                title=dict(
+                    text="<br>Network graph made with Python", font=dict(size=16)
+                ),
+                showlegend=False,
+                hovermode="closest",
+                margin=dict(b=20, l=5, r=5, t=40),
+                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            ),
+        )
+
+    def node_to_rel_distance(self):
+        from_clauses = ClauseSet(
+            {
+                clause
+                for clause in self.nodes[:, 0]
+                if clause.type == "negated_conjecture"
+            }
+        )
+        from_nodes = self.clauses_to_nodes(from_clauses)
+        distances_per_node = dijkstra(
+            csgraph=self.adjacency_matrix,
+            indices=from_nodes,
+            directed=False,
+            unweighted=True,
+        )
+        distance_to_set = np.min(distances_per_node, axis=0)
+        return distance_to_set
