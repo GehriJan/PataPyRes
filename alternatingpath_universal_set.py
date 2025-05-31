@@ -72,9 +72,8 @@ class UniversalSetRelevanceGraph(RelevanceGraph):
         return ClauseSet({node.clause for node in nodes})
 
     def clauses_to_nodes(self, clauses: ClauseSet):
-        allNodes = self.get_all_nodes()
         nodesOfClauseSubset = {
-            node for node in allNodes if node.clause in clauses.clauses
+            node for node in self.out_nodes if node.clause in clauses.clauses
         }
         return nodesOfClauseSubset
 
@@ -84,8 +83,7 @@ class UniversalSetRelevanceGraph(RelevanceGraph):
 
     def get_neighbours(self, subset: set[Node]):
         neighbouring_edges = {
-            edge for edge in self.edges
-            if self.edge_neighb_of_subset(edge, subset)
+            edge for edge in self.edges if self.edge_neighb_of_subset(edge, subset)
         }
         self.edges -= neighbouring_edges
         neighbouring_nodes = {
@@ -97,6 +95,7 @@ class UniversalSetRelevanceGraph(RelevanceGraph):
     def get_rel_neighbourhood(self, from_clauses: ClauseSet, distance: int):
 
         neighbourhood = self.clauses_to_nodes(from_clauses)
+        print(neighbourhood)
         for _ in range(2 * distance - 1):
             new_neighbours = self.get_neighbours(neighbourhood)
             neighbourhood |= new_neighbours
