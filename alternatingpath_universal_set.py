@@ -95,7 +95,6 @@ class UniversalSetRelevanceGraph(RelevanceGraph):
     def get_rel_neighbourhood(self, from_clauses: ClauseSet, distance: int):
 
         neighbourhood = self.clauses_to_nodes(from_clauses)
-        print(neighbourhood)
         for _ in range(2 * distance - 1):
             new_neighbours = self.get_neighbours(neighbourhood)
             neighbourhood |= new_neighbours
