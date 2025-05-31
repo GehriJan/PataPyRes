@@ -23,10 +23,6 @@ class AdjacencySetRelevanceGraph(RelevanceGraph):
         self.construct_inclause_edges()
         self.construct_betweenclause_edges()
 
-    def create_edge(self, node1, node2):
-        node1.neighbours.add(node2)
-        node2.neighbours.add(node1)
-
     @staticmethod
     def construct_nodes(clause_set: ClauseSet):
         out_nodes = set()
@@ -44,7 +40,7 @@ class AdjacencySetRelevanceGraph(RelevanceGraph):
                     continue
                 if in_node.literal == out_node.literal:
                     continue
-                self.create_edge(in_node, out_node)
+                in_node.neighbours.add(out_node)
 
     def construct_betweenclause_edges(self):
         for out_node in self.out_nodes:
@@ -53,20 +49,14 @@ class AdjacencySetRelevanceGraph(RelevanceGraph):
                     continue
                 if mgu(out_node.literal.atom, in_node.literal.atom) == None:
                     continue
-                self.create_edge(in_node, out_node)
-
-    def get_all_nodes(self):
-        return self.out_nodes | self.in_nodes
+                out_node.neighbours.add(in_node)
 
     @staticmethod
     def nodes_to_clauses(nodes):
         return ClauseSet({node.clause for node in nodes})
 
     def clauses_to_nodes(self, clauses: ClauseSet):
-        allNodes = self.get_all_nodes()
-        return {
-            node for node in allNodes if node.clause in clauses.clauses
-        }
+        return {node for node in self.out_nodes if node.clause in clauses.clauses}
 
     def extend_neighbourhood(self, outer_nodes: set[Node], inner_nodes: set[Node]):
         new_nodes = set()
