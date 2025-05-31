@@ -45,6 +45,7 @@ class MatrixRelevanceGraph(RelevanceGraph):
         nodes_i = self.nodes[i, :]
         nodes_j = self.nodes[j, :]
 
+        upper_left_triangle = j > i
         different_direction = (np.indices(i.shape).sum(axis=0) % 2).astype(bool)
 
         same_clause = nodes_i[:, :, 0] == nodes_j[:, :, 0]
@@ -56,7 +57,11 @@ class MatrixRelevanceGraph(RelevanceGraph):
 
         in_clause_connected = same_clause & different_literal
         between_clause_connected = ~same_clause & different_literal_sign & mgu_exists
-        return different_direction & (in_clause_connected | between_clause_connected)
+        return (
+            upper_left_triangle
+            & different_direction
+            & (in_clause_connected | between_clause_connected)
+        )
 
     def get_rel_neighbourhood(self, from_clauses, distance):
         from_nodes = self.clauses_to_nodes(from_clauses)
