@@ -70,6 +70,7 @@ class SearchParams(object):
         relevance_distance=None,
         graph_output_file=None,
         output_rel_neighbourhood=False,
+        relevance_graph_class=None,
     ):
         """
         Initialize heuristic parameters.
@@ -106,6 +107,8 @@ class SearchParams(object):
         self.relevance_distance = relevance_distance
         self.graph_output_file = graph_output_file
         self.output_rel_neighbourhood = output_rel_neighbourhood
+        self.relevance_graph_class = relevance_graph_class
+
         # TODO: add doc
 
 

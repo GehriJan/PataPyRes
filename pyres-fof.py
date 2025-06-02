@@ -151,6 +151,8 @@ def processOptions(opts):
             params.graph_output_file = optarg
         elif opt == "-o" or opt == "--output-rel-neighbourhood":
             params.output_rel_neighbourhood = True
+        elif opt == "-c" or opt == "--relevance-graph-class":
+            params.relevance_graph_class = globals()[optarg]
         elif opt == "-H" or opt == "--given-clause-heuristic":
             try:
                 params.heuristics = GivenClauseHeuristics[optarg]
@@ -203,7 +205,7 @@ if __name__ == "__main__":
     try:
         opts, args = getopt.gnu_getopt(
             sys.argv[1:],
-            "hsVpitfbH:n:Sr:g:o",
+            "hsVpitfbH:n:Sr:g:oc:",
             [
                 "help",
                 "silent",
@@ -219,6 +221,7 @@ if __name__ == "__main__":
                 "relevance-distance=",
                 "graph-output-file=",
                 "output-rel-neighbourhood",
+                "relevance-graph-class=",
             ],
         )
     except getopt.GetoptError as err:
@@ -238,7 +241,7 @@ if __name__ == "__main__":
         print(f"# rel_distance: {params.relevance_distance}")
         neg_conjs = cnf.getNegatedConjectures()
         start = time.process_time()
-        rel_graph = MatrixRelevanceGraph(cnf)
+        rel_graph = params.relevance_graph_class(cnf)
         print(f"# relevance_graph_class: {type(rel_graph).__name__}")
         graph_constructed = time.process_time()
         rel_cnf = rel_graph.get_rel_neighbourhood(neg_conjs, params.relevance_distance)

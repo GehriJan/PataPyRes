@@ -5,16 +5,18 @@ from literals import Literal
 from clauses import Clause
 from unification import mgu
 from literals import literalList2String
-import numpy as np
-import networkx as nx
-import matplotlib.pyplot as plt
-import plotly.graph_objects as go
-from scipy.sparse.csgraph import dijkstra
 
 
 class MatrixRelevanceGraph(RelevanceGraph):
 
     def __init__(self, clause_set):
+        # late imports because otherwise, now approach could be tested on StarExec
+        import numpy as np
+        import networkx as nx
+        import matplotlib.pyplot as plt
+        import plotly.graph_objects as go
+        from scipy.sparse.csgraph import dijkstra
+
         self.construct_graph(clause_set)
         return
 
