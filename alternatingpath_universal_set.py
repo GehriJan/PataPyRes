@@ -102,7 +102,7 @@ class UniversalSetRelevanceGraph(RelevanceGraph):
         clauses = self.nodes_to_clauses(neighbourhood)
         return clauses
 
-    def to_mermaid(self, path: str) -> str:
+    def to_file(self, path: str) -> str:
         output: str = "flowchart TD"
 
         node_groups = defaultdict(list)

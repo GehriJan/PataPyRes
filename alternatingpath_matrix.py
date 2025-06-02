@@ -83,7 +83,7 @@ class MatrixRelevanceGraph(RelevanceGraph):
     # PLOTTING FUNCTIONS
     ####################################
 
-    def to_mermaid(self, path: str) -> str:
+    def to_file(self, path: str) -> str:
         G = self.create_nx_graph()
         edge_x, edge_y = self.get_edge_coordinates(G)
         edge_trace = self.create_edge_trace(edge_x, edge_y)

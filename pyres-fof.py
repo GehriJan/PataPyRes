@@ -251,7 +251,7 @@ if __name__ == "__main__":
             f"# neighbourhood_computation_time: {neighbourhood_computed - graph_constructed}"
         )
         if params.graph_output_file:
-            rel_graph.to_mermaid(params.graph_output_file)
+            rel_graph.to_file(params.graph_output_file)
         if params.output_rel_neighbourhood:
             print("% Relevance Neighbourhood:")
             print(rel_cnf)
