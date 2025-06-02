@@ -2,9 +2,6 @@
 # ----------------------------------
 #
 # Module pyres-fof.py
-import multiprocessing as mp
-import time
-import re
 
 """
 Usage: pyres-fof.py [options] <problem_file>
@@ -92,6 +89,8 @@ Email: schulz@eprover.org
 """
 
 import sys
+import time
+import os
 from resource import RLIMIT_STACK, setrlimit, getrlimit
 import getopt
 from signal import signal, SIGXCPU
@@ -110,8 +109,9 @@ from fofspec import FOFSpec
 from heuristics import GivenClauseHeuristics
 from saturation import SearchParams, ProofState
 from litselection import LiteralSelectors
-from PyRes.alternatingpath_set import SetRelevanceGraph
-import re
+from alternatingpath_universal_set import UniversalSetRelevanceGraph
+from alternatingpath_adjacency_set import AdjacencySetRelevanceGraph
+from alternatingpath_matrix import MatrixRelevanceGraph
 
 suppressEqAxioms = False
 silent = False
@@ -119,17 +119,11 @@ indexed = False
 proofObject = False
 
 
-def is_pyres_solvable(problem_path: str):
-    file_name = problem_path[problem_path.index("/") + 1 :]
-    return bool(re.search("\\+|\\-", file_name))
-
-
 def processOptions(opts):
     """
     Process the options given
     """
     global silent, indexed, suppressEqAxioms, proofObject
-
     params = SearchParams()
     for opt, optarg in opts:
         if opt == "-h" or opt == "--help":
@@ -153,6 +147,10 @@ def processOptions(opts):
         elif opt == "-r" or opt == "--relevance-distance":
             params.relevance_distance = int(optarg)
             params.perform_rel_filter = True
+        elif opt == "-g" or opt == "--graph-output-file":
+            params.graph_output_file = optarg
+        elif opt == "-o" or opt == "--output-rel-neighbourhood":
+            params.output_rel_neighbourhood = True
         elif opt == "-H" or opt == "--given-clause-heuristic":
             try:
                 params.heuristics = GivenClauseHeuristics[optarg]
@@ -185,54 +183,7 @@ def timeoutHandler(sign, frame):
     sys.exit(0)
 
 
-def get_szs_status(problem, params, rel_cnf, cnf, state, res) -> str:
-    status = ""
-    if res != None:
-        if problem.isFof and problem.hasConj:
-            status = "SZS status Theorem"
-        else:
-            status = "SZS status Unsatisfiable"
-    else:
-        if params.perform_rel_filter and len(rel_cnf) != len(cnf):
-            status = "SZS status GaveUp"
-        elif problem.isFof and problem.hasConj:
-            status = "SZS status CounterSatisfiable"
-        else:
-            status = "SZS status Satisfiable"
-    return status
-
-
-def try_rel_distance(
-    d: int,
-    cnf,
-    problem,
-    params,
-    return_dict: dict,
-):
-    p = mp.current_process()
-    return_dict[p.name] = (d, None, None)
-    params.relevance_distance = d
-    rel_cnf: ClauseSet = ClauseSet()
-
-    if params.perform_rel_filter:
-        neg_conjs = cnf.getNegatedConjectures()
-        rel_graph = SetRelevanceGraph(cnf)
-        rel_cnf = rel_graph.get_rel_neighbourhood(neg_conjs, params.relevance_distance)
-    state = ProofState(
-        params,
-        rel_cnf if params.perform_rel_filter else cnf,
-        True,
-        indexed,
-    )
-    res = state.saturate()
-
-    # gave_up = res == None and params.perform_rel_filter and len(rel_cnf) != len(cnf)
-    szs_status = get_szs_status(problem, params, rel_cnf, cnf, state, res)
-    print((d, True, szs_status))
-    return_dict[p.name] = (d, True, szs_status)
-
-
-def main(from_external=False, external_opts=[], external_args=[]):
+if __name__ == "__main__":
     # We try to increase stack space, since we use a lot of
     # recursion. This works differentially well on different OSes, so
     # it is a bit more complex than I would hope for.
@@ -249,47 +200,31 @@ def main(from_external=False, external_opts=[], external_args=[]):
 
     signal(SIGXCPU, timeoutHandler)
     sys.setrecursionlimit(10000)
-    if not from_external:
-        try:
-            opts, args = getopt.gnu_getopt(
-                sys.argv[1:],
-                "hsVpitfbH:n:Sr:",
-                [
-                    "help",
-                    "silent",
-                    "version",
-                    "proof",
-                    "index",
-                    "delete-tautologies",
-                    "forward-subsumption",
-                    "backward-subsumption",
-                    "given-clause-heuristic=",
-                    "neg-lit-selection=",
-                    "supress-eq-axioms",
-                    "relevance-distance=",
-                ],
-            )
-        except getopt.GetoptError as err:
-            print(sys.argv[0], ":", err)
-            sys.exit(1)
-    # args = [
-    #     file for file in
-    #     (external_args if from_external else args)
-    #     if is_pyres_solvable(file)
-    # ]
-    print(
-        [
-            file
-            for file in (external_args if from_external else args)
-            if is_pyres_solvable(file)
-        ]
-    )
-    opts = external_args if from_external else opts
+    try:
+        opts, args = getopt.gnu_getopt(
+            sys.argv[1:],
+            "hsVpitfbH:n:Sr:g:o",
+            [
+                "help",
+                "silent",
+                "version",
+                "proof",
+                "index",
+                "delete-tautologies",
+                "forward-subsumption",
+                "backward-subsumption",
+                "given-clause-heuristic=",
+                "neg-lit-selection=",
+                "supress-eq-axioms",
+                "relevance-distance=",
+                "graph-output-file=",
+                "output-rel-neighbourhood",
+            ],
+        )
+    except getopt.GetoptError as err:
+        print(sys.argv[0], ":", err)
+        sys.exit(1)
     params = processOptions(opts)
-
-    # if(len(args)==0):
-    #     print("% SZS status Inappropriate")
-    #     return
 
     problem = FOFSpec()
     for file in args:
@@ -298,40 +233,66 @@ def main(from_external=False, external_opts=[], external_args=[]):
     if not suppressEqAxioms:
         problem.addEqAxioms()
     cnf = problem.clausify()
-
-    params.perform_rel_filter = True
-    mp.set_start_method("spawn")
-    manager = mp.Manager()
-    return_dict = manager.dict()
-    tried_rel_distances = []
-
-    SINGLE_RUN_TIMEOUT = 6
-    for i in range(1, len(cnf.clauses) + 1):
-        p = mp.Process(
-            target=try_rel_distance,
-            name=f"rel_dist_{i}",
-            args=(i, cnf, problem, params, return_dict),
+    rel_cnf: ClauseSet = ClauseSet()
+    if params.perform_rel_filter:
+        print(f"# rel_distance: {params.relevance_distance}")
+        neg_conjs = cnf.getNegatedConjectures()
+        start = time.process_time()
+        rel_graph = MatrixRelevanceGraph(cnf)
+        print(f"# relevance_graph_class: {type(rel_graph).__name__}")
+        graph_constructed = time.process_time()
+        rel_cnf = rel_graph.get_rel_neighbourhood(neg_conjs, params.relevance_distance)
+        neighbourhood_computed = time.process_time()
+        print(f"# graph_construction_time: {graph_constructed - start}")
+        print(
+            f"# neighbourhood_computation_time: {neighbourhood_computed - graph_constructed}"
         )
-        p.start()
-        start = time.time()
+        if params.graph_output_file:
+            rel_graph.to_mermaid(params.graph_output_file)
+        if params.output_rel_neighbourhood:
+            print("% Relevance Neighbourhood:")
+            print(rel_cnf)
 
-        while (time.time() - start <= SINGLE_RUN_TIMEOUT) and p.exitcode is None:
-            time.sleep(0.1)
+    state = ProofState(
+        params,
+        rel_cnf if params.perform_rel_filter else cnf,
+        silent,
+        indexed,
+    )
+
+    res = state.saturate()
+    if res != None:
+        if problem.isFof and problem.hasConj:
+            print("% SZS status Theorem")
         else:
-            p.terminate()
-            p.join()
-
-        tried_rel_distances.append(i)
-        last_return_state = (
-            return_dict.values()[-1][-1] if len(return_dict.values()) > 0 else None
-        )
-        if last_return_state == "SZS status Unsatisfiable":
-            break
-
-    return_list = list(sorted(return_dict.values(), key=lambda item: item[0]))
-    print(return_list)
-
-    print(f"% {return_list[-1][-1]}" if len(return_list) > 0 else None)
+            print("% SZS status Unsatisfiable")
+        if proofObject:
+            proof = res.orderedDerivation()
+            enableDerivationOutput()
+            print("% SZS output start CNFRefutation")
+            for s in proof:
+                print(s)
+            print("% SZS output end CNFRefutation")
+            disableDerivationOutput()
+    else:
+        if params.perform_rel_filter and len(rel_cnf) != len(cnf):
+            print("%\n% SZS status GaveUp")
+        elif problem.isFof and problem.hasConj:
+            print("% SZS status CounterSatisfiable")
+        else:
+            print("% SZS status Satisfiable")
+        if proofObject:
+            dummy = Derivable(
+                "dummy", flatDerivation("pseudoreference", state.processed.clauses)
+            )
+            sat = dummy.orderedDerivation()
+            enableDerivationOutput()
+            print("% SZS output start Saturation")
+            for s in sat[:-1]:
+                print(s)
+            print("% SZS output end Saturation")
+            disableDerivationOutput()
+    print(state.statisticsStr())
 
     # We use the resources interface to get and print the CPU time
     resources = getrusage(RUSAGE_SELF)
@@ -339,7 +300,3 @@ def main(from_external=False, external_opts=[], external_args=[]):
     print("%% User time          : %.3f s" % (resources.ru_utime,))
     print("%% System time        : %.3f s" % (resources.ru_stime,))
     print("%% Total time         : %.3f s" % (resources.ru_utime + resources.ru_stime,))
-
-
-if __name__ == "__main__":
-    main()
