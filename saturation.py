@@ -69,7 +69,7 @@ class SearchParams(object):
         perform_rel_filter=None,
         relevance_distance=None,
         graph_output_file=None,
-        output_rel_neighbourhood=False,
+        print_rel_neighbourhood=False,
         relevance_graph_class=None,
     ):
         """
@@ -106,7 +106,7 @@ class SearchParams(object):
         self.perform_rel_filter = perform_rel_filter
         self.relevance_distance = relevance_distance
         self.graph_output_file = graph_output_file
-        self.output_rel_neighbourhood = output_rel_neighbourhood
+        self.print_rel_neighbourhood = print_rel_neighbourhood
         self.relevance_graph_class = relevance_graph_class
 
         # TODO: add doc
