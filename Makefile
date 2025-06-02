@@ -56,6 +56,6 @@ starexec_rel: clean
 	mkdir -p $(STAREXECPATH)/bin
 	find . -name ".#*"  -exec rm {} \;
 	cp *.py $(STAREXECPATH)/bin
-	cp ../src/run_scripts/$(REL_CLASS)/starexec_run_PyRes_rd_* $(STAREXECPATH)/bin
+	cp run_scripts/$(REL_CLASS)/starexec_run_PyRes_rd_* $(STAREXECPATH)/bin
 	cp README $(STAREXECPATH)
 	cd $(STAREXECPATH); zip -r PyRes$(VERSION).zip bin
