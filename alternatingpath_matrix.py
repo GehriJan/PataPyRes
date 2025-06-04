@@ -5,17 +5,17 @@ from literals import Literal
 from clauses import Clause
 from unification import mgu
 from literals import literalList2String
+import numpy as np
+import networkx as nx
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+from scipy.sparse.csgraph import dijkstra
 
 
 class MatrixRelevanceGraph(RelevanceGraph):
 
     def __init__(self, clause_set):
         # late imports because otherwise, now approach could be tested on StarExec
-        import numpy as np
-        import networkx as nx
-        import matplotlib.pyplot as plt
-        import plotly.graph_objects as go
-        from scipy.sparse.csgraph import dijkstra
 
         self.construct_graph(clause_set)
         return
@@ -47,23 +47,32 @@ class MatrixRelevanceGraph(RelevanceGraph):
         nodes_i = self.nodes[i, :]
         nodes_j = self.nodes[j, :]
 
-        upper_left_triangle = j > i
-        different_direction = (np.indices(i.shape).sum(axis=0) % 2).astype(bool)
+        preliminary = (j > i) & (  # upper_left_triangle
+            np.indices(i.shape).sum(axis=0) % 2
+        ).astype(
+            bool
+        )  # different_direction
 
-        same_clause = nodes_i[:, :, 0] == nodes_j[:, :, 0]
-        different_literal = nodes_i[:, :, 1] != nodes_j[:, :, 1]
-
-        different_literal_sign = nodes_i[:, :, 2] != nodes_j[:, :, 2]
-        mgu_exists_vectorized = np.vectorize(lambda x, y: mgu(x, y) is not None)
-        mgu_exists = mgu_exists_vectorized(nodes_i[:, :, 3], nodes_j[:, :, 3])
-
-        in_clause_connected = same_clause & different_literal
-        between_clause_connected = ~same_clause & different_literal_sign & mgu_exists
-        return (
-            upper_left_triangle
-            & different_direction
-            & (in_clause_connected | between_clause_connected)
+        in_clause_connected = (
+            preliminary
+            & (nodes_i[:, :, 0] == nodes_j[:, :, 0])  # same_clause
+            & (nodes_i[:, :, 1] != nodes_j[:, :, 1])  # different_literal
         )
+
+        mgu_exists = np.vectorize(
+            lambda x, y, compute_mgu: mgu(x, y) is not None if compute_mgu else False
+        )
+
+        between_clause_connected = (
+            preliminary
+            & (nodes_i[:, :, 2] != nodes_j[:, :, 2])  # different_literal_sign
+            & (nodes_i[:, :, 0] == nodes_j[:, :, 0])  # different_clause
+        )
+        between_clause_connected = mgu_exists(
+            nodes_i[:, :, 3], nodes_j[:, :, 3], between_clause_connected
+        )
+
+        return in_clause_connected | between_clause_connected
 
     def get_rel_neighbourhood(self, from_clauses, distance):
         from_nodes = self.clauses_to_nodes(from_clauses)
