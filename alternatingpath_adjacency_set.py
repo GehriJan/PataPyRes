@@ -5,6 +5,7 @@ from unification import mgu
 from collections import defaultdict
 from alternatingpath_abstract import RelevanceGraph
 from typing import Union
+from copy import deepcopy
 
 
 class Node:
@@ -20,37 +21,36 @@ class Node:
 class AdjacencySetRelevanceGraph(RelevanceGraph):
 
     def construct_graph(self, clause_set: ClauseSet) -> None:
-        self.out_nodes, self.in_nodes = self.construct_nodes(clause_set)
+        self.out_nodes = self.construct_nodes(clause_set)
+        self.in_nodes = self.construct_nodes(clause_set)
         self.construct_inclause_edges()
         self.construct_betweenclause_edges()
 
     @staticmethod
     def construct_nodes(clause_set: ClauseSet):
-        out_nodes = set()
-        in_nodes = set()
-        for clause in clause_set.clauses:
-            for literal in clause.literals:
-                out_nodes.add(Node(literal, clause))
-                in_nodes.add(Node(literal, clause))
-        return out_nodes, in_nodes
+        return {
+            Node(literal, clause)
+            for clause in clause_set.clauses
+            for literal in clause.literals
+        }
 
     def construct_inclause_edges(self):
         for in_node in self.in_nodes:
-            for out_node in self.out_nodes:
-                if in_node.clause != out_node.clause:
-                    continue
-                if in_node.literal == out_node.literal:
-                    continue
-                in_node.neighbours.add(out_node)
+            in_node.neighbours = {
+                out_node
+                for out_node in self.out_nodes
+                if in_node.clause == out_node.clause
+                and in_node.literal != out_node.literal
+            }
 
     def construct_betweenclause_edges(self):
         for out_node in self.out_nodes:
-            for in_node in self.in_nodes:
-                if out_node.literal.negative == in_node.literal.negative:
-                    continue
-                if mgu(out_node.literal.atom, in_node.literal.atom) == None:
-                    continue
-                out_node.neighbours.add(in_node)
+            out_node.neighbours = {
+                in_node
+                for in_node in self.in_nodes
+                if (out_node.literal.negative != in_node.literal.negative)
+                and (mgu(out_node.literal.atom, in_node.literal.atom) != None)
+            }
 
     @staticmethod
     def nodes_to_clauses(nodes):
