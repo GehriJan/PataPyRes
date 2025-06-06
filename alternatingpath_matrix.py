@@ -5,17 +5,17 @@ from literals import Literal
 from clauses import Clause
 from unification import mgu
 from literals import literalList2String
-import numpy as np
-import networkx as nx
-import matplotlib.pyplot as plt
-import plotly.graph_objects as go
-from scipy.sparse.csgraph import dijkstra
 
 
 class MatrixRelevanceGraph(RelevanceGraph):
 
     def __init__(self, clause_set):
         # late imports because otherwise, now approach could be tested on StarExec
+        import numpy as np
+        import networkx as nx
+        import matplotlib.pyplot as plt
+        import plotly.graph_objects as go
+        from scipy.sparse.csgraph import dijkstra
 
         self.construct_graph(clause_set)
         return
@@ -48,14 +48,13 @@ class MatrixRelevanceGraph(RelevanceGraph):
         nodes_j = self.nodes[j, :]
 
         preliminary = (j > i) & (  # upper_left_triangle
-            np.indices(i.shape).sum(axis=0) % 2
-        ).astype(
-            bool
-        )  # different_direction
+            np.indices(i.shape).sum(axis=0) % 2  # different_direction
+        ).astype(bool)
+        same_clause = nodes_i[:, :, 0] == nodes_j[:, :, 0]
 
         in_clause_connected = (
             preliminary
-            & (nodes_i[:, :, 0] == nodes_j[:, :, 0])  # same_clause
+            & same_clause
             & (nodes_i[:, :, 1] != nodes_j[:, :, 1])  # different_literal
         )
 
@@ -66,7 +65,7 @@ class MatrixRelevanceGraph(RelevanceGraph):
         between_clause_connected = (
             preliminary
             & (nodes_i[:, :, 2] != nodes_j[:, :, 2])  # different_literal_sign
-            & (nodes_i[:, :, 0] == nodes_j[:, :, 0])  # different_clause
+            & ~same_clause
         )
         between_clause_connected = mgu_exists(
             nodes_i[:, :, 3], nodes_j[:, :, 3], between_clause_connected
