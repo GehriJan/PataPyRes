@@ -147,8 +147,8 @@ def processOptions(opts):
         elif opt == "-r" or opt == "--relevance-distance":
             params.relevance_distance = int(optarg)
             params.perform_rel_filter = True
-        elif opt == "-g" or opt == "--graph-output-file":
-            params.graph_output_file = optarg
+        elif opt == "-g" or opt == "--graph-output":
+            params.graph_output = True
         elif opt == "-v" or opt == "--print-rel-neighbourhood":
             params.print_rel_neighbourhood = True
         elif opt == "-c" or opt == "--relevance-graph-class":
@@ -205,7 +205,7 @@ if __name__ == "__main__":
     try:
         opts, args = getopt.gnu_getopt(
             sys.argv[1:],
-            "hsVpitfbH:n:Sr:g:vc:",
+            "hsVpitfbH:n:Sr:gvc:",
             [
                 "help",
                 "silent",
@@ -219,7 +219,7 @@ if __name__ == "__main__":
                 "neg-lit-selection=",
                 "supress-eq-axioms",
                 "relevance-distance=",
-                "graph-output-file=",
+                "graph-output",
                 "print-rel-neighbourhood",
                 "relevance-graph-class=",
             ],
@@ -250,8 +250,8 @@ if __name__ == "__main__":
         print(
             f"# neighbourhood_computation_time: {neighbourhood_computed - graph_constructed}"
         )
-        if params.graph_output_file:
-            rel_graph.to_file(params.graph_output_file)
+        if params.graph_output:
+            rel_graph.output_graph()
         if params.print_rel_neighbourhood:
             print("% Relevance Neighbourhood:")
             print(rel_cnf)
