@@ -27,42 +27,37 @@ class Edge:
 class UniversalSetRelevanceGraph(RelevanceGraph):
 
     def construct_graph(self, clause_set: ClauseSet) -> None:
-        self.out_nodes, self.in_nodes = self.construct_nodes(clause_set)
+        self.out_nodes = self.construct_nodes(clause_set)
+        self.in_nodes = self.construct_nodes(clause_set)
         self.edges: set[Edge] = (
             self.construct_inclause_edges() | self.construct_betweenclause_edges()
         )
 
     @staticmethod
     def construct_nodes(clause_set: ClauseSet):
-        out_nodes = set()
-        in_nodes = set()
-        for clause in clause_set.clauses:
-            for literal in clause.literals:
-                out_nodes.add(Node(literal, clause))
-                in_nodes.add(Node(literal, clause))
-        return out_nodes, in_nodes
+        return {
+            Node(literal, clause)
+            for clause in clause_set.clauses
+            for literal in clause.literals
+        }
 
     def construct_inclause_edges(self):
-        in_clause_edges = set()
-        for in_node in self.in_nodes:
-            for out_node in self.out_nodes:
-                if in_node.clause != out_node.clause:
-                    continue
-                if in_node.literal == out_node.literal:
-                    continue
-                in_clause_edges.add(Edge(in_node, out_node))
-        return in_clause_edges
+        return {
+            Edge(in_node, out_node)
+            for out_node in self.out_nodes
+            for in_node in self.in_nodes
+            if in_node.clause == out_node.clause and in_node.literal != out_node.literal
+        }
 
     def construct_betweenclause_edges(self):
-        between_clause_edges = set()
-        for out_node in self.out_nodes:
-            for in_node in self.in_nodes:
-                if out_node.literal.negative == in_node.literal.negative:
-                    continue
-                if mgu(out_node.literal.atom, in_node.literal.atom) == None:
-                    continue
-                between_clause_edges.add(Edge(out_node, in_node))
-        return between_clause_edges
+        return {
+            Edge(out_node, in_node)
+            for out_node in self.out_nodes
+            for in_node in self.in_nodes
+            if in_node.clause != out_node.clause
+            and out_node.literal.negative != in_node.literal.negative
+            and mgu(out_node.literal.atom, in_node.literal.atom) != None
+        }
 
     def get_all_nodes(self):
         return self.out_nodes | self.in_nodes
@@ -93,9 +88,7 @@ class UniversalSetRelevanceGraph(RelevanceGraph):
         return neighbouring_nodes
 
     def get_rel_neighbourhood(self, from_clauses: ClauseSet, distance: int):
-
         neighbourhood = self.clauses_to_nodes(from_clauses)
-
         search_range = (2 * distance - 1) if distance != "n" else 2 * len(self.in_nodes)
         for _ in range(search_range):
             new_neighbours = self.get_neighbours(neighbourhood)

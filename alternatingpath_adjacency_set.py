@@ -48,8 +48,9 @@ class AdjacencySetRelevanceGraph(RelevanceGraph):
             out_node.neighbours = {
                 in_node
                 for in_node in self.in_nodes
-                if (out_node.literal.negative != in_node.literal.negative)
-                and (mgu(out_node.literal.atom, in_node.literal.atom) != None)
+                if in_node.clause != out_node.clause
+                and out_node.literal.negative != in_node.literal.negative
+                and mgu(out_node.literal.atom, in_node.literal.atom) != None
             }
 
     @staticmethod
