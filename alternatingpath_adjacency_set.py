@@ -4,6 +4,7 @@ from literals import Literal
 from unification import mgu
 from collections import defaultdict
 from alternatingpath_abstract import RelevanceGraph
+from typing import Union
 
 
 class Node:
@@ -63,10 +64,13 @@ class AdjacencySetRelevanceGraph(RelevanceGraph):
             neighbour for node in outer_nodes for neighbour in node.neighbours
         } - neighbourhood
 
-    def get_rel_neighbourhood(self, from_clauses: ClauseSet, distance: int):
+    def get_rel_neighbourhood(self, from_clauses: ClauseSet, distance: Union[int, str]):
         neighbourhood = self.clauses_to_nodes(from_clauses)
-        outer_nodes = neighbourhood.copy()
-        for _ in range(2 * distance - 1):
-            outer_nodes = self.extend_neighbourhood(outer_nodes, neighbourhood)
-            neighbourhood |= outer_nodes
+        new_neighbours = neighbourhood.copy()
+        search_range = (2 * distance - 1) if distance != "n" else 2 * len(self.in_nodes)
+        for _ in range(search_range):
+            new_neighbours = self.extend_neighbourhood(new_neighbours, neighbourhood)
+            if not new_neighbours:
+                break
+            neighbourhood |= new_neighbours
         return self.nodes_to_clauses(neighbourhood)
