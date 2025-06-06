@@ -10,7 +10,8 @@ from literals import literalList2String
 class MatrixRelevanceGraph(RelevanceGraph):
 
     def __init__(self, clause_set):
-        # late imports because otherwise, now approach could be tested on StarExec
+        # late imports because otherwise, no approach could be tested on StarExec
+        global np, nx, plt, go, dijkstra
         import numpy as np
         import networkx as nx
         import matplotlib.pyplot as plt
