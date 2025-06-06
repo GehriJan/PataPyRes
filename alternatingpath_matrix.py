@@ -81,7 +81,7 @@ class MatrixRelevanceGraph(RelevanceGraph):
             indices=from_nodes,
             directed=False,
             unweighted=True,
-            limit=max(2 * distance - 1, 0),
+            limit=max(2 * distance - 1, 0) if distance != "n" else np.inf,
         )
         distance_to_set = np.min(distances_per_node, axis=0)
         nodes_neighbourhood = np.argwhere(np.isfinite(distance_to_set)).flatten()

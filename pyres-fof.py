@@ -145,7 +145,7 @@ def processOptions(opts):
         elif opt == "-b" or opt == "--backward-subsumption":
             params.backward_subsumption = True
         elif opt == "-r" or opt == "--relevance-distance":
-            params.relevance_distance = int(optarg)
+            params.relevance_distance = int(optarg) if optarg.isnumeric() else "n"
             params.perform_rel_filter = True
         elif opt == "-g" or opt == "--graph-output":
             params.graph_output = True
