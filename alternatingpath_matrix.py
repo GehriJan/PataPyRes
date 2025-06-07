@@ -26,7 +26,7 @@ class MatrixRelevanceGraph(RelevanceGraph):
         self.adjacency_matrix = self.construct_matrix()
 
     def clauses_to_nodes(self, clauses):
-        return np.nonzero(np.isin(self.nodes[:, 0], clauses.clauses))[0]
+        return np.nonzero(np.isin(self.nodes[:, 0], clauses.clauses))[0][0::2]
 
     def nodes_to_clauses(self, nodes):
         return ClauseSet(set(self.nodes[nodes, 0]))
