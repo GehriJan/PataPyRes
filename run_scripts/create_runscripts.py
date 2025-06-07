@@ -37,7 +37,7 @@ set ProblemSPC=`grep " SPC " $1 | sed -e "s/.* : //"`
 set default_flags="-tifbsVp -nlargest -HPickGiven5"
 set rel_flags="-r {rel_distance:03d} -c {relevance_graph_class_name}"
 set final=" "$1
-set ecmd="python3 ./pyres_fof.py $default_flags $rel_flags $final"
+set ecmd="python3 ./pyres-fof.py $default_flags $rel_flags $final"
 python3 --version
 if ( `expr "$ProblemSPC" : "FOF.*"` || `expr "$ProblemSPC" : "CNF.*"` ) then
     echo "% Command    : " $ecmd
