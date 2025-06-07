@@ -6,17 +6,18 @@ from clauses import Clause
 from unification import mgu
 from literals import literalList2String
 
+global np, nx, plt, go, dijkstra
+import numpy as np
+import networkx as nx
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+from scipy.sparse.csgraph import dijkstra
+
 
 class MatrixRelevanceGraph(RelevanceGraph):
 
     def __init__(self, clause_set):
         # late imports because otherwise, no approach could be tested on StarExec
-        global np, nx, plt, go, dijkstra
-        import numpy as np
-        import networkx as nx
-        import matplotlib.pyplot as plt
-        import plotly.graph_objects as go
-        from scipy.sparse.csgraph import dijkstra
 
         self.construct_graph(clause_set)
         return
@@ -66,7 +67,7 @@ class MatrixRelevanceGraph(RelevanceGraph):
         between_clause_connected = (
             preliminary
             & (nodes_i[:, :, 2] != nodes_j[:, :, 2])  # different_literal_sign
-            & ~same_clause
+            & (~same_clause)
         )
         between_clause_connected = mgu_exists(
             nodes_i[:, :, 3], nodes_j[:, :, 3], between_clause_connected
@@ -105,21 +106,30 @@ class MatrixRelevanceGraph(RelevanceGraph):
     def create_nx_graph(self):
         G = nx.Graph()
         # Get edges
-        rows, cols = np.where(self.adjacency_matrix == True)
+        rows, cols = np.where(
+            self.adjacency_matrix | self.same_clause_and_literal_matrix()
+        )
         edges = zip(rows.tolist(), cols.tolist())
         # Add edges
         G.add_edges_from(edges)
         # Add position attribute
         pos = nx.spring_layout(G)
+        # pos = nx.kamada_kawai_layout(G)
         nx.set_node_attributes(G, pos, "pos")
 
         return G
 
+    def same_clause_and_literal_matrix(self):
+        return np.fromfunction(
+            lambda i, j: j - i == 1, shape=2 * [self.nodes.shape[0]], dtype=int
+        )
+
     def get_node_labels(self):
         return [
-            f"clause: {literalList2String(clause.literals)}\n"
-            + f"literal: {literal}\n"
-            + f"direction: {"out" if index%2==0 else "in"}"
+            f"index: {index}<br>"
+            f"clause: {literalList2String(clause.literals)}<br>"
+            + f"literal: {literal}<br>"
+            + f"direction: {"out" if index%2==0 else "in"}<br>"
             for index, (clause, literal) in enumerate(self.nodes[:, 0:2])
         ]
 
@@ -167,7 +177,9 @@ class MatrixRelevanceGraph(RelevanceGraph):
                 size=10,
                 colorbar=dict(
                     thickness=15,
-                    title=dict(text="Node distance", side="right"),
+                    title=dict(
+                        text="Node distance from conjecture nodes", side="right"
+                    ),
                     xanchor="left",
                 ),
                 line_width=2,
@@ -178,9 +190,7 @@ class MatrixRelevanceGraph(RelevanceGraph):
         return go.Figure(
             data=[edge_trace, node_trace],
             layout=go.Layout(
-                title=dict(
-                    text="<br>Network graph made with Python", font=dict(size=16)
-                ),
+                title=dict(text="Relevance Graph plotted.", font=dict(size=16)),
                 showlegend=False,
                 hovermode="closest",
                 margin=dict(b=20, l=5, r=5, t=40),
@@ -206,3 +216,9 @@ class MatrixRelevanceGraph(RelevanceGraph):
         )
         distance_to_set = np.min(distances_per_node, axis=0)
         return distance_to_set
+
+
+def matrix_string(matrix):
+    return "\n".join(
+        [" ".join(["X" if value else "." for value in row]) for row in matrix]
+    )
