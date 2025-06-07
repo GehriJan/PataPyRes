@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from clausesets import ClauseSet
 
+
 class RelevanceGraph(ABC):
 
     def __init__(self, clause_set: ClauseSet):
@@ -13,3 +14,8 @@ class RelevanceGraph(ABC):
     @abstractmethod
     def get_rel_neighbourhood(self, from_clauses: ClauseSet, distance: int):
         pass
+
+    def output_graph(self):
+        print(
+            "% Error: Currently, there is no graph output available for this approach."
+        )

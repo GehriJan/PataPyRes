@@ -251,10 +251,12 @@ if __name__ == "__main__":
             f"# neighbourhood_computation_time: {neighbourhood_computed - graph_constructed}"
         )
         if params.graph_output:
+
             rel_graph.output_graph()
         if params.print_rel_neighbourhood:
-            print("% Relevance Neighbourhood:")
+            print("% Start Relevance Neighbourhood output")
             print(rel_cnf)
+            print("% End Relevance Neighbourhood output")
 
     state = ProofState(
         params,
