@@ -3,7 +3,7 @@ import numpy as np
 import math
 from tqdm import tqdm
 
-rel_distances = [2, 3, 5, 8, 13, 21, 33, 54]
+rel_distances = [2, 3, 5, 8, 13, 21, 33, 54, "n"]
 relevance_graph_class_names = [
     "UniversalSetRelevanceGraph",
     "AdjacencySetRelevanceGraph",
@@ -17,7 +17,10 @@ if True:
             os.remove(os.path.join(approach_dir, f))
 
         for rel_distance in rel_distances:
-            file_name = f"{approach_dir}/starexec_run_PyRes_rd_{rel_distance:03d}"
+            rel_distance_string = (
+                f"{rel_distance:03d}" if type(rel_distance) == int else rel_distance
+            )
+            file_name = f"{approach_dir}/starexec_run_PyRes_rd_{rel_distance_string}"
             runscript_content = f"""
 #!/bin/tcsh
 #
@@ -35,7 +38,7 @@ which python3.13.0
 echo -n "% Problem    : " ; head -2 $1 | tail -1 | sed -e "s/.*  : //"
 set ProblemSPC=`grep " SPC " $1 | sed -e "s/.* : //"`
 set default_flags="-tifbsVp -nlargest -HPickGiven5"
-set rel_flags="-r {rel_distance:03d} -c {relevance_graph_class_name}"
+set rel_flags="-r {rel_distance_string} -c {relevance_graph_class_name}"
 set final=" "$1
 set ecmd="python3 ./pyres-fof.py $default_flags $rel_flags $final"
 python3 --version
