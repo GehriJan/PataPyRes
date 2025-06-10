@@ -6,18 +6,17 @@ from clauses import Clause
 from unification import mgu
 from literals import literalList2String
 
-global np, nx, plt, go, dijkstra
-import numpy as np
-import networkx as nx
-import matplotlib.pyplot as plt
-import plotly.graph_objects as go
-from scipy.sparse.csgraph import dijkstra
-
 
 class MatrixRelevanceGraph(RelevanceGraph):
 
     def __init__(self, clause_set):
         # late imports because otherwise, no approach could be tested on StarExec
+        global np, nx, plt, go, dijkstra
+        import numpy as np
+        import networkx as nx
+        import matplotlib.pyplot as plt
+        import plotly.graph_objects as go
+        from scipy.sparse.csgraph import dijkstra
 
         self.construct_graph(clause_set)
         return
@@ -33,12 +32,15 @@ class MatrixRelevanceGraph(RelevanceGraph):
         return ClauseSet(set(self.nodes[nodes, 0]))
 
     def construct_nodes(self, clauses):
-        nodes = []
-        for clause in clauses.clauses:
-            for literal in clause.literals:
-                for _ in range(2):
-                    nodes.append((clause, literal, literal.negative, literal.atom))
-        return np.array(nodes, dtype=object)
+        nodes = np.array(
+            [
+                (2 * ((clause, literal, literal.negative, literal.atom),))
+                for clause in clauses.clauses
+                for literal in clause.literals
+            ],
+            dtype=object,
+        )
+        return nodes.reshape((nodes.shape[0] * nodes.shape[1], nodes.shape[2]))
 
     def construct_matrix(self):
         return np.fromfunction(
