@@ -45,7 +45,7 @@ Email: schulz@eprover.org
 
 import unittest
 from idents import Ident
-from lexer import Token,Lexer
+from lexer import Token, Lexer
 from clausesets import ClauseSet, HeuristicClauseSet, IndexedClauseSet
 import heuristics
 from litselection import largestLit
@@ -58,27 +58,35 @@ class SearchParams(object):
     A simple container for different parameter settings for the proof
     search.
     """
-    def __init__(self,
-                 heuristics = heuristics.PickGiven5,
-                 delete_tautologies   = False,
-                 forward_subsumption  = False,
-                 backward_subsumption = False,
-                 literal_selection    = None):
+
+    def __init__(
+        self,
+        heuristics=heuristics.PickGiven5,
+        delete_tautologies=False,
+        forward_subsumption=False,
+        backward_subsumption=False,
+        literal_selection=None,
+        perform_rel_filter=None,
+        relevance_distance=None,
+        graph_output=False,
+        print_rel_neighbourhood=False,
+        relevance_graph_class=None,
+    ):
         """
         Initialize heuristic parameters.
         """
-        self.heuristics           = heuristics
+        self.heuristics = heuristics
         """
         This defines the clause selection heuristic, i.e. the order in
         which uprocessed clauses are selected for processing.
         """
-        self.delete_tautologies   = delete_tautologies
+        self.delete_tautologies = delete_tautologies
         """
         This determines if tautologies will be deleted. Tautologies in
         plain first-order logic (without equality) are clauses which
         contain two literals with the same atom, but opposite signs.
         """
-        self.forward_subsumption  = forward_subsumption
+        self.forward_subsumption = forward_subsumption
         """
         Forward-subsumption checks the given clause against already
         processed clauses, and discards it if it is subsumed.
@@ -95,7 +103,13 @@ class SearchParams(object):
         literals from a set of negative literals (both represented as
         lists, not Python sets) as the inference literal.
         """
+        self.perform_rel_filter = perform_rel_filter
+        self.relevance_distance = relevance_distance
+        self.graph_output = graph_output
+        self.print_rel_neighbourhood = print_rel_neighbourhood
+        self.relevance_graph_class = relevance_graph_class
 
+        # TODO: add doc
 
 
 class ProofState(object):
@@ -112,6 +126,7 @@ class ProofState(object):
     In addition to the clause sets, this data structure also maintains
     a number of counters for statistics on the proof search.
     """
+
     def __init__(self, params, clauses, silent=False, indexed=False):
         """
         Initialize the proof state with a set of clauses.
@@ -120,19 +135,19 @@ class ProofState(object):
         self.unprocessed = HeuristicClauseSet(params.heuristics)
 
         if indexed:
-            self.processed   = IndexedClauseSet()
+            self.processed = IndexedClauseSet()
         else:
-            self.processed   = ClauseSet()
+            self.processed = ClauseSet()
         for c in clauses.clauses:
             self.unprocessed.addClause(c)
         self.initial_clause_count = len(self.unprocessed)
-        self.proc_clause_count    = 0
-        self.factor_count         = 0
-        self.resolvent_count      = 0
-        self.tautologies_deleted  = 0
-        self.forward_subsumed     = 0
-        self.backward_subsumed    = 0
-        self.silent               = silent
+        self.proc_clause_count = 0
+        self.factor_count = 0
+        self.resolvent_count = 0
+        self.tautologies_deleted = 0
+        self.forward_subsumed = 0
+        self.backward_subsumed = 0
+        self.silent = silent
 
     def processClause(self):
         """
@@ -146,12 +161,12 @@ class ProofState(object):
         if given_clause.isEmpty():
             # We have found an explicit contradiction
             return given_clause
-        if self.params.delete_tautologies and \
-           given_clause.isTautology():
+        if self.params.delete_tautologies and given_clause.isTautology():
             self.tautologies_deleted += 1
             return None
-        if self.params.forward_subsumption and \
-           forwardSubsumption(self.processed, given_clause):
+        if self.params.forward_subsumption and forwardSubsumption(
+            self.processed, given_clause
+        ):
             # If the given clause is subsumed by an already processed
             # clause, all releveant inferences will already have been
             # done with that more general clause. So we can discard
@@ -171,20 +186,20 @@ class ProofState(object):
             # processed clauses are typically if not universally more
             # general than the new given clause).
             tmp = backwardSubsumption(given_clause, self.processed)
-            self.backward_subsumed = self.backward_subsumed+tmp
+            self.backward_subsumed = self.backward_subsumed + tmp
 
-        if(self.params.literal_selection):
+        if self.params.literal_selection:
             given_clause.selectInferenceLits(self.params.literal_selection)
         if not self.silent:
             print("%", given_clause)
         new = []
-        factors    = computeAllFactors(given_clause)
+        factors = computeAllFactors(given_clause)
         new.extend(factors)
         resolvents = computeAllResolvents(given_clause, self.processed)
         new.extend(resolvents)
-        self.proc_clause_count = self.proc_clause_count+1
-        self.factor_count = self.factor_count+len(factors)
-        self.resolvent_count = self.resolvent_count+len(resolvents)
+        self.proc_clause_count = self.proc_clause_count + 1
+        self.factor_count = self.factor_count + len(factors)
+        self.resolvent_count = self.resolvent_count + len(resolvents)
 
         self.processed.addClause(given_clause)
 
@@ -217,20 +232,22 @@ class ProofState(object):
 %% Resolvents computed: %d
 %% Tautologies deleted: %d
 %% Forward subsumed   : %d
-%% Backward subsumed  : %d""" \
-    %(self.initial_clause_count,
-      self.proc_clause_count,
-      self.factor_count,
-      self.resolvent_count,
-      self.tautologies_deleted,
-      self.forward_subsumed,
-      self.backward_subsumed)
+%% Backward subsumed  : %d""" % (
+            self.initial_clause_count,
+            self.proc_clause_count,
+            self.factor_count,
+            self.resolvent_count,
+            self.tautologies_deleted,
+            self.forward_subsumed,
+            self.backward_subsumed,
+        )
 
 
 class TestProver(unittest.TestCase):
     """
     Unit test class for simple resolution inference control.
     """
+
     def setUp(self):
         """
         Setup function for clause/literal unit tests. Initialize
@@ -352,13 +369,13 @@ cnf(not_p, axiom, ~p(a)).
 
         if provable:
             self.assertNotEqual(res, None)
-            if res == None: # pragma: nocover
+            if res == None:  # pragma: nocover
                 print("% Bug: Should have found a proof!")
             else:
                 print("% Proof found")
         else:
             self.assertEqual(res, None)
-            if res != None: # pragma: nocover
+            if res != None:  # pragma: nocover
                 print("% Bug: Should not have found a proof!")
             else:
                 print("% No proof found")
@@ -378,16 +395,16 @@ cnf(not_p, axiom, ~p(a)).
         self.evalSatResult(self.spec2, True, True)
         self.evalSatResult(self.spec3, False, True)
 
-
     def testParamSet(self):
         """
         Test that parameter setting code works.
         """
         pm = SearchParams()
         self.assertEqual(pm.heuristics, heuristics.PickGiven5)
-        self.assertEqual(pm.delete_tautologies,   False)
-        self.assertEqual(pm.forward_subsumption,  False)
+        self.assertEqual(pm.delete_tautologies, False)
+        self.assertEqual(pm.forward_subsumption, False)
         self.assertEqual(pm.backward_subsumption, False)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

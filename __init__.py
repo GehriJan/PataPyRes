@@ -90,7 +90,6 @@ Email: schulz@eprover.org
 
 import sys
 import time
-import os
 from resource import RLIMIT_STACK, setrlimit, getrlimit
 import getopt
 from signal import signal, SIGXCPU
@@ -109,9 +108,7 @@ from fofspec import FOFSpec
 from heuristics import GivenClauseHeuristics
 from saturation import SearchParams, ProofState
 from litselection import LiteralSelectors
-from alternatingpath_universal_set import UniversalSetRelevanceGraph
-from alternatingpath_adjacency_set import AdjacencySetRelevanceGraph
-from alternatingpath_matrix import MatrixRelevanceGraph
+from alternatingpath_set import SetRelevanceGraph
 
 suppressEqAxioms = False
 silent = False
@@ -124,6 +121,7 @@ def processOptions(opts):
     Process the options given
     """
     global silent, indexed, suppressEqAxioms, proofObject
+
     params = SearchParams()
     for opt, optarg in opts:
         if opt == "-h" or opt == "--help":
@@ -145,14 +143,8 @@ def processOptions(opts):
         elif opt == "-b" or opt == "--backward-subsumption":
             params.backward_subsumption = True
         elif opt == "-r" or opt == "--relevance-distance":
-            params.relevance_distance = int(optarg) if optarg.isnumeric() else "n"
+            params.relevance_distance = int(optarg)
             params.perform_rel_filter = True
-        elif opt == "-g" or opt == "--graph-output":
-            params.graph_output = True
-        elif opt == "-v" or opt == "--print-rel-neighbourhood":
-            params.print_rel_neighbourhood = True
-        elif opt == "-c" or opt == "--relevance-graph-class":
-            params.relevance_graph_class = globals()[optarg]
         elif opt == "-H" or opt == "--given-clause-heuristic":
             try:
                 params.heuristics = GivenClauseHeuristics[optarg]
@@ -185,7 +177,7 @@ def timeoutHandler(sign, frame):
     sys.exit(0)
 
 
-if __name__ == "__main__":
+def main(from_notebook=False, notebook_opts=[], notebook_args=[]):
     # We try to increase stack space, since we use a lot of
     # recursion. This works differentially well on different OSes, so
     # it is a bit more complex than I would hope for.
@@ -202,35 +194,33 @@ if __name__ == "__main__":
 
     signal(SIGXCPU, timeoutHandler)
     sys.setrecursionlimit(10000)
-    try:
-        opts, args = getopt.gnu_getopt(
-            sys.argv[1:],
-            "hsVpitfbH:n:Sr:gvc:",
-            [
-                "help",
-                "silent",
-                "version",
-                "proof",
-                "index",
-                "delete-tautologies",
-                "forward-subsumption",
-                "backward-subsumption",
-                "given-clause-heuristic=",
-                "neg-lit-selection=",
-                "supress-eq-axioms",
-                "relevance-distance=",
-                "graph-output",
-                "print-rel-neighbourhood",
-                "relevance-graph-class=",
-            ],
-        )
-    except getopt.GetoptError as err:
-        print(sys.argv[0], ":", err)
-        sys.exit(1)
-    params = processOptions(opts)
+    if not from_notebook:
+        try:
+            opts, args = getopt.gnu_getopt(
+                sys.argv[1:],
+                "hsVpitfbH:n:Sr:",
+                [
+                    "help",
+                    "silent",
+                    "version",
+                    "proof",
+                    "index",
+                    "delete-tautologies",
+                    "forward-subsumption",
+                    "backward-subsumption",
+                    "given-clause-heuristic=",
+                    "neg-lit-selection=",
+                    "supress-eq-axioms",
+                    "relevance-distance=",
+                ],
+            )
+        except getopt.GetoptError as err:
+            print(sys.argv[0], ":", err)
+            sys.exit(1)
+    params = processOptions(notebook_opts if from_notebook else opts)
 
     problem = FOFSpec()
-    for file in args:
+    for file in notebook_args if from_notebook else args:
         problem.parse(file)
 
     if not suppressEqAxioms:
@@ -241,23 +231,12 @@ if __name__ == "__main__":
         print(f"# rel_distance: {params.relevance_distance}")
         neg_conjs = cnf.getNegatedConjectures()
         start = time.process_time()
-        rel_graph = params.relevance_graph_class(cnf)
-        print(f"# relevance_graph_class: {type(rel_graph).__name__}")
+        rel_graph = SetRelevanceGraph(cnf)
         graph_constructed = time.process_time()
         rel_cnf = rel_graph.get_rel_neighbourhood(neg_conjs, params.relevance_distance)
         neighbourhood_computed = time.process_time()
         print(f"# graph_construction_time: {graph_constructed - start}")
-        print(
-            f"# neighbourhood_computation_time: {neighbourhood_computed - graph_constructed}"
-        )
-        if params.graph_output:
-
-            rel_graph.output_graph()
-        if params.print_rel_neighbourhood:
-            print("% Start Relevance Neighbourhood output")
-            print(rel_cnf)
-            print("% End Relevance Neighbourhood output")
-
+        print(f"# neighbourhood_computation_time: {neighbourhood_computed - graph_constructed}")
     state = ProofState(
         params,
         rel_cnf if params.perform_rel_filter else cnf,
@@ -266,6 +245,7 @@ if __name__ == "__main__":
     )
 
     res = state.saturate()
+    # todo: test alternate path findings properly into statistics and output
     if res != None:
         if problem.isFof and problem.hasConj:
             print("% SZS status Theorem")
@@ -305,3 +285,7 @@ if __name__ == "__main__":
     print("%% User time          : %.3f s" % (resources.ru_utime,))
     print("%% System time        : %.3f s" % (resources.ru_stime,))
     print("%% Total time         : %.3f s" % (resources.ru_utime + resources.ru_stime,))
+
+
+if __name__ == "__main__":
+    main()
